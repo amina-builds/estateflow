@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>EstateFlow AI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{color-scheme:light;--bg:#fff5f8;--p1:#ffffff;--p2:#fdebf2;--ln:#f4cfdd;--tx:#3a1d2a;--mu:#9a6b80;--ac:#d6336c;--ok:#2f8f55;--wr:#b7791f;--er:#c0392b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--tx);font:14px/1.5 Inter,"Segoe UI",system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em}
+.btn{background:var(--ac);color:#fff;border:0;border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:600;transition:.15s}
+.btn:hover{background:#b82a5c}.btn.g{background:transparent;color:var(--tx);border:1px solid var(--ln)}.btn.g:hover{background:var(--p2)}.btn.s{padding:4px 9px;font-size:12px}
+input,select,textarea{background:var(--p2);border:1px solid var(--ln);border-radius:6px;padding:8px 10px;width:100%;outline:0}
+input:focus,select:focus,textarea:focus{border-color:var(--ac)}
+label{display:block;font-size:12px;color:var(--mu);margin-bottom:4px}
+.auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 0,#ffdce9,var(--bg) 60%)}
+.hero{text-align:center;max-width:520px}.logo{width:52px;height:52px;border:1px solid var(--ac);color:var(--ac);border-radius:12px;display:grid;place-items:center;margin:0 auto 22px;font-weight:700;font-size:20px;background:var(--p1)}
+.hero h1{font-size:38px;margin-bottom:12px}.hero p{color:var(--mu);margin:0 0 28px;font-size:16px}
+.pills{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:28px}.pill{border:1px solid var(--ln);border-radius:99px;padding:4px 12px;color:var(--mu);font-size:12px}
+.card{background:var(--p1);border:1px solid var(--ln);border-radius:10px;padding:18px}
+.signin{width:100%;max-width:380px}.signin .f{margin:14px 0}.note{color:var(--mu);font-size:12px;margin-top:12px}
+#app{display:none;min-height:100vh}
+aside{position:fixed;inset:0 auto 0 0;width:220px;background:var(--p1);border-right:1px solid var(--ln);padding:18px 12px;display:flex;flex-direction:column;gap:2px;z-index:5;transition:.2s}
+aside .brand{font-weight:700;padding:4px 10px 16px;font-size:16px}
+.nav{background:none;border:0;text-align:left;padding:9px 10px;border-radius:6px;color:var(--mu);cursor:pointer;display:flex;justify-content:space-between}
+.nav:hover{background:var(--p2);color:var(--tx)}.nav.on{background:var(--p2);color:var(--ac);font-weight:600}
+main{margin-left:220px;padding:24px 28px;max-width:1200px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.menu{display:none}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{cursor:pointer;transition:.15s}.kpi:hover{border-color:var(--ac)}.kpi b{font-size:28px;display:block;margin-top:2px}.kpi span{color:var(--mu);font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tools{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}.tools input{max-width:260px}.tools select{max-width:170px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse}
+th{text-align:left;color:var(--mu);font-weight:500;font-size:12px;padding:8px 10px;border-bottom:1px solid var(--ln);white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--ln);white-space:nowrap}tr:last-child td{border:0}
+.b{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;border:1px solid var(--ln);color:var(--ac)}
+.b.ok{color:var(--ok);border-color:currentColor}.b.wr{color:var(--wr);border-color:currentColor}.b.er{color:var(--er);border-color:currentColor}
+.bar{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12px}.bar i{display:block;height:8px;background:var(--ac);border-radius:4px;min-width:3px}.bar span:first-child{width:80px;color:var(--mu)}
+.pg{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.ph{height:110px;border-radius:6px;background:linear-gradient(135deg,#fbd5e3,#fff0f5);display:grid;place-items:center;color:#c08aa0;margin-bottom:10px;font-size:12px}
+.empty{color:var(--mu);text-align:center;padding:28px}
+.li{padding:9px 0;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;gap:10px}.li:last-child{border:0}.li small{color:var(--mu)}
+.ov{position:fixed;inset:0;background:#3a1d2a88;display:none;align-items:center;justify-content:center;padding:16px;z-index:20}.ov.on{display:flex}
+.md{width:100%;max-width:480px;max-height:90vh;overflow:auto}.md .row{margin:12px 0}.err{color:var(--er);font-size:12px;margin-top:3px}
+.acts{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+#toast{position:fixed;right:18px;bottom:18px;background:var(--ac);color:#fff;padding:10px 16px;border-radius:6px;font-weight:600;opacity:0;transform:translateY(8px);transition:.2s;z-index:30;pointer-events:none}#toast.on{opacity:1;transform:none}
+.chat{display:grid;grid-template-columns:200px 1fr;gap:12px;height:calc(100vh - 130px);min-height:420px}
+.msgs{flex:1;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:4px}.m{max-width:80%;padding:9px 13px;border-radius:10px;background:var(--p2)}.m.u{align-self:flex-end;background:#fbd5e3}.m.s{align-self:center;color:var(--mu);font-size:12px;border:1px dashed var(--ln);background:none}
+.sug{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.sug button{background:none;border:1px solid var(--ln);border-radius:99px;padding:4px 11px;color:var(--mu);cursor:pointer;font-size:12px}.sug button:hover{color:var(--ac);border-color:var(--ac)}
+@media(max-width:800px){aside{transform:translateX(-100%)}aside.on{transform:none}main{margin-left:0;padding:16px}.menu{display:inline-block}.grid2,.chat{grid-template-columns:1fr}.chat .hist{display:none}.hero h1{font-size:30px}}
+</style></head><body>
+
+<section class="auth" id="welcome"><div class="hero"><div class="logo">EF</div>
+<h1>Welcome to EstateFlow AI</h1><p>Manage leads, properties, appointments and follow-ups in one calm, organised workspace.</p>
+<button class="btn" data-go="signin">Get Started</button>
+<div class="pills"><span class="pill">Lead CRM</span><span class="pill">Properties</span><span class="pill">Appointments</span><span class="pill">AI Assistant</span></div></div></section>
+
+<section class="auth" id="signin" style="display:none"><div class="card signin"><h2>Sign in</h2><div class="note" style="margin:4px 0 0">Welcome back. Enter your details to continue.</div>
+<div class="f"><label>Email</label><input id="em" type="email" placeholder="you@agency.com"><div class="err" id="e1"></div></div>
+<div class="f"><label>Password</label><input id="pw" type="password" placeholder="Password"><div class="err" id="e2"></div></div>
+<button class="btn" style="width:100%" id="login">Sign in</button>
+<p class="note">Demo only: no real login exists yet. Any email and a password of 4+ characters will open the dashboard. Real authentication comes with the backend phase.</p>
+<button class="btn g s" data-go="welcome">Back</button></div></section>
+
+<div id="app"><aside id="side"><div class="brand">EstateFlow AI</div><div id="nav"></div><div style="flex:1"></div><button class="nav" id="out">Sign out</button></aside>
+<main><div class="top"><div style="display:flex;gap:10px;align-items:center"><button class="btn g s menu" id="mn">Menu</button><h2 id="ttl"></h2></div><div id="tact"></div></div><div id="view"></div></main></div>
+<div class="ov" id="ov"><div class="card md" id="md"></div></div><div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const day=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+const AG=['Unassigned','Admin'];
+const db={leads:[],properties:[],appointments:[],followups:[],activity:[]};
+const ST=['New','Contacted','Qualified','Interested','Negotiation','Converted','Lost'];
+const PT=['Residential','Commercial','Apartment','House','Plot','Office','Shop'],PS=['Available','Reserved','Sold','Rented','Archived'];
+const AS=['Scheduled','Confirmed','Completed','Cancelled','Rescheduled'],PR=['Low','Medium','High','Urgent'];
+let view='dashboard',q={},chat=[],seq=9;
+const money=n=>'PKR '+Number(n).toLocaleString('en-US');
+const log=()=>{};/* the backend records activity */
+const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),2200)};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fuStatus=f=>f.st==='Pending'&&f.due<day(0)?'Overdue':f.st;
+const tone=s=>({Converted:'ok',Completed:'ok',Available:'ok',Confirmed:'ok',Lost:'er',Cancelled:'er',Overdue:'er',Sold:'wr',Reserved:'wr',Urgent:'er',High:'wr',Negotiation:'wr'}[s]||'');
+const bdg=s=>`<span class="b ${tone(s)}">${esc(s)}</span>`;
+const activeLeads=()=>db.leads.filter(l=>!l.arch);
+
+/* API LAYER: the single place for all backend calls (Phase 4). useMock=true keeps the demo data. */
+const API={base:window.ESTATEFLOW_API||'http://127.0.0.1:8000',useMock:false,
+endpoints:{health:'/api/health',state:'/api/state',leads:'/api/leads',properties:'/api/properties',appointments:'/api/appointments',followups:'/api/followups',chat:'/api/chat'},
+async call(m,p,body){if(this.useMock)return null;const r=await fetch(this.base+p,{method:m,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});if(!r.ok)throw new Error('API '+r.status);return r.json()},
+list(k){return this.call('GET',this.endpoints[k])},create(k,b){return this.call('POST',this.endpoints[k],b)},update(k,id,b){return this.call('PATCH',this.endpoints[k]+'/'+id,b)},chat(msg){return this.call('POST',this.endpoints.chat,{message:msg})}};
+let online=true;
+async function sync(){try{Object.assign(db,await API.list('state'));online=true}catch(e){online=false}render()}
+async function commit(p){try{await p}catch(e){toast('Backend error: '+e.message);return false}await sync();return true}
+/* screens */
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{$('#welcome').style.display=b.dataset.go==='welcome'?'flex':'none';$('#signin').style.display=b.dataset.go==='signin'?'flex':'none'});
+$('#login').onclick=()=>{const e=$('#em').value.trim(),p=$('#pw').value;$('#e1').textContent=/^\S+@\S+\.\S+$/.test(e)?'':'Enter a valid email.';$('#e2').textContent=p.length>=4?'':'Password must be at least 4 characters.';
+if($('#e1').textContent||$('#e2').textContent)return;$('#signin').style.display='none';$('#app').style.display='block';go('dashboard');sync();toast('Signed in (demo login)')};
+$('#pw').onkeydown=e=>{if(e.key==='Enter')$('#login').click()};
+$('#out').onclick=()=>{$('#app').style.display='none';$('#welcome').style.display='flex';$('#pw').value=''};
+$('#mn').onclick=()=>$('#side').classList.toggle('on');
+
+const MODS=[['dashboard','Dashboard'],['leads','Leads'],['properties','Properties'],['appointments','Appointments'],['followups','Follow-ups'],['ai','AI Agent'],['activity','Activity'],['settings','Settings']];
+function go(v,f){view=v;if(f)q={...q,...f};$('#side').classList.remove('on');render()}
+function render(){
+$('#nav').innerHTML=MODS.map(([k,l])=>`<button class="nav ${k===view?'on':''}" data-v="${k}">${l}${k==='followups'?`<span>${db.followups.filter(f=>fuStatus(f)==='Overdue').length||''}</span>`:''}</button>`).join('');
+$('#nav').querySelectorAll('.nav').forEach(b=>b.onclick=()=>{q={};go(b.dataset.v)});
+$('#ttl').textContent=MODS.find(m=>m[0]===view)[1];
+const add={leads:'Add Lead',properties:'Add Property',appointments:'Schedule Appointment',followups:'Create Follow-up'}[view];
+$('#tact').innerHTML=(view==='dashboard'?'<button class="btn g" id="rf">Refresh</button>':'')+(add?`<button class="btn" id="ad">${add}</button>`:'');
+if($('#rf'))$('#rf').onclick=()=>{render();toast('Data refreshed')};
+if($('#ad'))$('#ad').onclick=()=>({leads:fLead,properties:fProp,appointments:fAppt,followups:fFu})[view]();
+$('#view').innerHTML=(online?'':`<div class="card" style="border-color:var(--er);margin-bottom:12px">Cannot reach the backend at ${API.base}. Start it with: uvicorn main:app --reload</div>`)+VIEWS[view]();
+const v=$('#view');
+v.querySelectorAll('[data-k]').forEach(el=>el.onclick=()=>go(el.dataset.k,JSON.parse(el.dataset.f||'{}')));
+v.querySelectorAll('[data-q]').forEach(el=>el.oninput=()=>{q[el.dataset.q]=el.value;const p=el.selectionStart;render();const n=$(`[data-q="${el.dataset.q}"]`);n.focus();if(n.setSelectionRange&&n.type==='search')n.setSelectionRange(p,p)});
+v.querySelectorAll('[data-a]').forEach(el=>el.onclick=()=>ACT[el.dataset.a](el.dataset.id,el));
+v.querySelectorAll('[data-ls]').forEach(el=>el.onchange=async()=>{if(await commit(API.update('leads',el.dataset.ls,{st:el.value})))toast('Status updated')});
+if(view==='ai')bindAI();
+}
+const tbl=(cols,rows,empty)=>rows.length?`<div class="tw"><table><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table></div>`:`<div class="empty">${empty}</div>`;
+const sel=(key,opts,all)=>`<select data-q="${key}"><option value="">${all}</option>${opts.map(o=>`<option ${q[key]===o?'selected':''}>${o}</option>`).join('')}</select>`;
+const srch=ph=>`<input type="search" data-q="s" placeholder="${ph}" value="${esc(q.s||'')}">`;
+const has=(o,s)=>!s||Object.values(o).join(' ').toLowerCase().includes(s.toLowerCase());
+
+const VIEWS={
+dashboard(){const L=activeLeads(),n=(a,f)=>a.filter(f).length;
+const k=[['Total Leads',L.length,'leads',{}],['New Leads',n(L,l=>l.st==='New'),'leads',{st:'New'}],['Active Properties',n(db.properties,p=>p.st==='Available'),'properties',{st:'Available'}],['Sold Properties',n(db.properties,p=>p.st==='Sold'),'properties',{st:'Sold'}],
+['Upcoming Appointments',n(db.appointments,a=>['Scheduled','Confirmed'].includes(a.st)),'appointments',{}],['Pending Follow-ups',n(db.followups,f=>f.st==='Pending'),'followups',{}]];
+const mx=Math.max(1,...ST.map(s=>n(L,l=>l.st===s)));
+return `<div class="kpis">${k.map(x=>`<div class="card kpi" data-k="${x[2]}" data-f='${JSON.stringify(x[3])}'><span>${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>
+<div class="grid2"><div class="card"><h3>Lead pipeline</h3><div style="margin-top:8px">${ST.map(s=>{const c=n(L,l=>l.st===s);return `<div class="bar"><span>${s}</span><i style="width:${c/mx*60}%"></i><span style="color:var(--tx)">${c}</span></div>`}).join('')}</div>
+<p class="note">Conversion: ${L.length?Math.round(n(L,l=>l.st==='Converted')/L.length*100):0}% of active leads converted.</p></div>
+<div class="card"><h3>Recent activity</h3>${db.activity.slice(0,6).map(a=>`<div class="li"><div>${esc(a.t)}<br><small>${esc(a.d)}</small></div><small>${a.time}</small></div>`).join('')||'<div class="empty">No activity yet.</div>'}</div>
+<div class="card"><h3>Recent leads</h3>${L.slice(-5).reverse().map(l=>`<div class="li"><div>${esc(l.n)}<br><small>${esc(l.int)}</small></div>${bdg(l.st)}</div>`).join('')||'<div class="empty">No leads yet.</div>'}</div>
+<div class="card"><h3>Properties overview</h3>${PS.map(s=>`<div class="li"><span>${s}</span><b>${n(db.properties,p=>p.st===s)}</b></div>`).join('')}</div></div>`},
+leads(){const r=activeLeads().filter(l=>has(l,q.s)&&(!q.st||l.st===q.st)).sort((a,b)=>q.so==='Budget'?b.bud-a.bud:q.so==='Name'?a.n.localeCompare(b.n):0);
+return `<div class="tools">${srch('Search leads')}${sel('st',ST,'All statuses')}${sel('so',['Name','Budget'],'Sort: Newest')}</div><div class="card">${tbl(['ID','Name','Phone','Source','Budget','Agent','Status',''],r.map(l=>[l.id,esc(l.n),esc(l.ph),esc(l.src),money(l.bud),esc(l.ag),`<select data-ls="${l.id}" style="width:130px;padding:3px 6px">${ST.map(s=>`<option ${s===l.st?'selected':''}>${s}</option>`).join('')}</select>`,`<button class="btn g s" data-a="editLead" data-id="${l.id}">Edit</button> <button class="btn g s" data-a="arcLead" data-id="${l.id}">Archive</button>`]),'No leads match your search.')}</div>`},
+properties(){const r=db.properties.filter(p=>has(p,q.s)&&(!q.st||p.st===q.st)&&(!q.ty||p.ty===q.ty));
+return `<div class="tools">${srch('Search properties')}${sel('ty',PT,'All types')}${sel('st',PS,'All statuses')}</div>${r.length?`<div class="pg">${r.map(p=>`<div class="card"><div class="ph">Image preview</div><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(p.t)}</b>${bdg(p.st)}</div><div class="note" style="margin:4px 0 8px">${esc(p.ty)} · ${esc(p.loc)} · ${esc(p.ar)}${p.bd?` · ${p.bd} bed`:''}</div><div style="font-size:16px;font-weight:600">${money(p.pr)}</div><div class="acts" style="justify-content:flex-start"><button class="btn g s" data-a="editProp" data-id="${p.id}">Edit</button><button class="btn g s" data-a="arcProp" data-id="${p.id}">Archive</button></div></div>`).join('')}</div>`:'<div class="card empty">No properties match.</div>'}`},
+appointments(){const r=db.appointments.filter(a=>has(a,q.s)&&(!q.st||a.st===q.st));
+return `<div class="tools">${srch('Search appointments')}${sel('st',AS,'All statuses')}</div><div class="card">${tbl(['ID','Client','Property','Agent','Date','Time','Type','Status',''],r.map(a=>[a.id,esc(a.lead),esc(a.prop),esc(a.ag),a.date,a.time,esc(a.ty),bdg(a.st),`<button class="btn g s" data-a="doneAp" data-id="${a.id}">Complete</button> <button class="btn g s" data-a="cancelAp" data-id="${a.id}">Cancel</button>`]),'No appointments found.')}</div>`},
+followups(){const t=day(0),r=db.followups.filter(f=>has(f,q.s)&&(!q.pr||f.pri===q.pr)&&(!q.w||(q.w==='Overdue'?fuStatus(f)==='Overdue':q.w==='Today'?f.due===t&&f.st==='Pending':f.due>t&&f.st==='Pending')));
+return `<div class="tools">${srch('Search follow-ups')}${sel('w',['Overdue','Today','Upcoming'],'All tasks')}${sel('pr',PR,'All priorities')}</div><div class="card">${tbl(['Task','Lead','Agent','Due','Priority','Status',''],r.map(f=>[esc(f.task),esc(f.lead),esc(f.ag),f.due,bdg(f.pri),bdg(fuStatus(f)),f.st==='Completed'?'':`<button class="btn g s" data-a="doneFu" data-id="${f.id}">Mark done</button> <button class="btn g s" data-a="moveFu" data-id="${f.id}">+1 day</button>`]),'No follow-ups found.')}</div>`},
+ai(){const sg=['Show me all new leads.','Which follow-ups are overdue?','Show me upcoming appointments.','Give me an overview of today.'];
+return `<div class="chat"><div class="card hist"><button class="btn g s" id="nc" style="width:100%">New conversation</button><p class="note">Conversation history will appear here once the backend is connected.</p></div>
+<div class="card" style="display:flex;flex-direction:column;min-height:0"><div class="note" style="margin:0 0 8px">Status: <b style="color:var(--wr)">Not connected</b> to an AI backend yet (Phase 3).</div>
+<div class="msgs" id="msgs">${chat.length?chat.map(m=>`<div class="m ${m.r}">${esc(m.x)}</div>`).join(''):'<div class="empty">Ask something below. The assistant will answer from your real data once connected.</div>'}</div>
+<div class="sug">${sg.map(s=>`<button data-sg="${s}">${s}</button>`).join('')}</div>
+<div style="display:flex;gap:8px"><input id="ci" placeholder="Type a message"><button class="btn" id="cs">Send</button></div></div></div>`},
+activity(){return `<div class="card">${db.activity.map(a=>`<div class="li"><div>${bdg(a.t)} ${esc(a.d)}</div><small>${a.time}</small></div>`).join('')||'<div class="empty">No activity yet.</div>'}</div>`},
+settings(){return `<div class="grid2"><div class="card"><h3>Profile</h3><div class="row" style="margin-top:10px"><label>Name</label><input value="Amina"></div><label>Business name</label><input value="Your Agency Name"><p class="note">These fields are display-only in this phase.</p></div>
+<div class="card"><h3>Team</h3>${AG.map(a=>`<div class="li"><span>${a}</span><span class="b">Agent</span></div>`).join('')}<h3 style="margin-top:16px">Integrations</h3>${['FastAPI backend','OpenAI','Supabase'].map(a=>`<div class="li"><span>${a}</span><span class="b">Not connected</span></div>`).join('')}</div></div>`}};
+
+/* modal + forms */
+function openForm(title,fields,vals,save){
+const m=$('#md');m.innerHTML=`<h3>${title}</h3>${fields.map(f=>`<div class="row"><label>${f[1]}${f[3]?' *':''}</label>${f[2]instanceof Array?`<select id="f_${f[0]}">${f[2].map(o=>`<option ${vals[f[0]]===o?'selected':''}>${o}</option>`).join('')}</select>`:`<input id="f_${f[0]}" type="${f[2]}" value="${esc(vals[f[0]]??'')}">`}<div class="err" id="r_${f[0]}"></div></div>`).join('')}<div class="acts"><button class="btn g" id="cx">Cancel</button><button class="btn" id="sv">Save</button></div>`;
+$('#ov').classList.add('on');$('#cx').onclick=()=>$('#ov').classList.remove('on');
+$('#sv').onclick=()=>{let ok=true;const o={};fields.forEach(f=>{let v=$('#f_'+f[0]).value.trim();$('#r_'+f[0]).textContent='';if(f[3]&&!v){$('#r_'+f[0]).textContent='Required';ok=false}if(f[2]==='number'&&v!==''&&Number(v)<0){$('#r_'+f[0]).textContent='Must be positive';ok=false}o[f[0]]=f[2]==='number'?Number(v):v});if(!ok)return;$('#sv').disabled=true;Promise.resolve(save(o)).then(ok=>{if(ok!==false)$('#ov').classList.remove('on');else $('#sv').disabled=false})}}
+$('#ov').onclick=e=>{if(e.target.id==='ov')$('#ov').classList.remove('on')};
+function fLead(l){const e=!!l?.id;openForm(e?'Edit Lead':'Add Lead',[['n','Full name','text',1],['ph','Phone','text',1],['em','Email','email'],['src','Source',['Website','Referral','Facebook','Walk-in']],['int','Interested property','text'],['bud','Budget (PKR)','number'],['loc','Preferred location','text'],['st','Status',ST],['ag','Assigned agent',AG]],l||{st:'New'},async o=>{const ok=await commit(e?API.update('leads',l.id,o):API.create('leads',o));if(ok)toast(e?'Lead updated':'Lead added');return ok})}
+function fProp(p){const e=!!p?.id;openForm(e?'Edit Property':'Add Property',[['t','Title','text',1],['ty','Type',PT],['loc','Location','text',1],['pr','Price (PKR)','number',1],['bd','Bedrooms','number'],['ba','Bathrooms','number'],['ar','Area','text'],['st','Status',PS],['ag','Assigned agent',AG]],p||{st:'Available',ty:'House'},async o=>{const ok=await commit(e?API.update('properties',p.id,o):API.create('properties',o));if(ok)toast('Property saved');return ok})}
+function fAppt(){if(!activeLeads().length||!db.properties.length)return toast('Add a lead and a property first');openForm('Schedule Appointment',[['lead','Client / lead',activeLeads().map(l=>l.n)],['prop','Property',db.properties.map(p=>p.t)],['ag','Agent',AG],['date','Date','date',1],['time','Start time','time',1],['ty','Type',['Viewing','Meeting','Contract Signing']]],{date:day(1)},async o=>{const ok=await commit(API.create('appointments',{...o,st:'Scheduled'}));if(ok)toast('Appointment scheduled');return ok})}
+function fFu(){if(!activeLeads().length)return toast('Add a lead first');openForm('Create Follow-up',[['task','Task','text',1],['lead','Related lead',activeLeads().map(l=>l.n)],['ag','Agent',AG],['due','Due date','date',1],['pri','Priority',PR]],{due:day(1),pri:'Medium'},async o=>{const ok=await commit(API.create('followups',{...o,st:'Pending'}));if(ok)toast('Follow-up created');return ok})}
+const ap=async(id,st)=>{if(await commit(API.update('appointments',id,{st})))toast('Marked '+st.toLowerCase())};
+const ACT={editLead:id=>fLead(db.leads.find(l=>l.id===id)),editProp:id=>fProp(db.properties.find(p=>p.id===id)),
+arcLead:async id=>{const l=db.leads.find(x=>x.id===id);if(confirm('Archive '+l.n+'?')&&await commit(API.update('leads',id,{arch:1})))toast('Lead archived')},
+arcProp:async id=>{if(await commit(API.update('properties',id,{st:'Archived'})))toast('Property archived')},
+doneAp:id=>ap(id,'Completed'),cancelAp:id=>ap(id,'Cancelled'),
+doneFu:async id=>{if(await commit(API.update('followups',id,{st:'Completed'})))toast('Follow-up completed')},
+moveFu:async id=>{const f=db.followups.find(x=>x.id===id);const d=new Date(f.due);d.setDate(d.getDate()+1);if(await commit(API.update('followups',id,{due:d.toISOString().slice(0,10)})))toast('Rescheduled')}};
+
+/* AI chat UI: no fake answers */
+function bindAI(){const send=async t=>{t=t.trim();if(!t)return;chat.push({r:'u',x:t});render();try{const r=await API.chat(t);chat.push({r:r.status==='ok'?'a':'s',x:r.reply})}catch(e){chat.push({r:'s',x:'Could not reach the backend at '+API.base+'.'})}render();const m=$('#msgs');m.scrollTop=m.scrollHeight};
+$('#cs').onclick=()=>send($('#ci').value);$('#ci').onkeydown=e=>{if(e.key==='Enter')send($('#ci').value)};
+document.querySelectorAll('[data-sg]').forEach(b=>b.onclick=()=>send(b.dataset.sg));$('#nc').onclick=()=>{chat=[];render()}}
+</script></body></html>
