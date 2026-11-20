@@ -1,8 +1,14 @@
+# Python
 venv/
 .venv/
 __pycache__/
 *.pyc
+# Local database (contains real business data - never upload)
 *.db
+# Secrets (API keys etc.)
 .env
+# Editor / OS
 .vscode/
+.DS_Store
+Thumbs.db
 node_modules/

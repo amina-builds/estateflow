@@ -56,16 +56,15 @@ td{padding:10px;border-bottom:1px solid var(--ln);white-space:nowrap}tr:last-chi
 <div class="pills"><span class="pill">Lead CRM</span><span class="pill">Properties</span><span class="pill">Appointments</span><span class="pill">AI Assistant</span></div></div></section>
 
 <section class="auth" id="signin" style="display:none"><div class="card signin"><h2>Sign in</h2><div class="note" style="margin:4px 0 0">Welcome back. Enter your details to continue.</div>
-<div class="f"><label>Email</label><input id="em" type="email" placeholder="you@agency.com"><div class="err" id="e1"></div></div>
-<div class="f"><label>Password</label><input id="pw" type="password" placeholder="Password"><div class="err" id="e2"></div></div>
-<button class="btn" style="width:100%" id="login">Sign in</button>
-<p class="note">Demo only: no real login exists yet. Any email and a password of 4+ characters will open the dashboard. Real authentication comes with the backend phase.</p>
+<div id="gbtn" style="margin:18px 0 6px;display:flex;justify-content:center"></div><div class="err" id="gerr"></div><p class="note">Sign in with your Google account. Only authorised team emails can enter.</p>
 <button class="btn g s" data-go="welcome">Back</button></div></section>
 
-<div id="app"><aside id="side"><div class="brand">EstateFlow AI</div><div id="nav"></div><div style="flex:1"></div><button class="nav" id="out">Sign out</button></aside>
+<div id="app"><aside id="side"><div class="brand">EstateFlow AI</div><div id="nav"></div><div style="flex:1"></div><div class="note" id="who" style="padding:0 10px 8px;word-break:break-all"></div><button class="nav" id="out">Sign out</button></aside>
 <main><div class="top"><div style="display:flex;gap:10px;align-items:center"><button class="btn g s menu" id="mn">Menu</button><h2 id="ttl"></h2></div><div id="tact"></div></div><div id="view"></div></main></div>
 <div class="ov" id="ov"><div class="card md" id="md"></div></div><div id="toast"></div>
 
+<script src="config.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 const $=s=>document.querySelector(s);
 const day=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
@@ -87,17 +86,24 @@ const activeLeads=()=>db.leads.filter(l=>!l.arch);
 /* API LAYER: the single place for all backend calls (Phase 4). useMock=true keeps the demo data. */
 const API={base:window.ESTATEFLOW_API||'http://127.0.0.1:8000',useMock:false,
 endpoints:{health:'/api/health',state:'/api/state',leads:'/api/leads',properties:'/api/properties',appointments:'/api/appointments',followups:'/api/followups',chat:'/api/chat'},
-async call(m,p,body){if(this.useMock)return null;const r=await fetch(this.base+p,{method:m,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});if(!r.ok)throw new Error('API '+r.status);return r.json()},
+async call(m,p,body){if(this.useMock)return null;const h={'Content-Type':'application/json'};const t=sessionStorage.getItem('ef_token');if(t)h.Authorization='Bearer '+t;const r=await fetch(this.base+p,{method:m,headers:h,body:body?JSON.stringify(body):undefined});if(r.status===401&&t){signOut('Session expired. Please sign in again.');throw new Error('Not signed in')}if(!r.ok){let d='';try{d=(await r.json()).detail}catch(e){}throw new Error(typeof d==='string'&&d?d:'API '+r.status)}return r.json()},
 list(k){return this.call('GET',this.endpoints[k])},create(k,b){return this.call('POST',this.endpoints[k],b)},update(k,id,b){return this.call('PATCH',this.endpoints[k]+'/'+id,b)},chat(msg){return this.call('POST',this.endpoints.chat,{message:msg})}};
 let online=true;
 async function sync(){try{Object.assign(db,await API.list('state'));online=true}catch(e){online=false}render()}
 async function commit(p){try{await p}catch(e){toast('Backend error: '+e.message);return false}await sync();return true}
 /* screens */
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{$('#welcome').style.display=b.dataset.go==='welcome'?'flex':'none';$('#signin').style.display=b.dataset.go==='signin'?'flex':'none'});
-$('#login').onclick=()=>{const e=$('#em').value.trim(),p=$('#pw').value;$('#e1').textContent=/^\S+@\S+\.\S+$/.test(e)?'':'Enter a valid email.';$('#e2').textContent=p.length>=4?'':'Password must be at least 4 characters.';
-if($('#e1').textContent||$('#e2').textContent)return;$('#signin').style.display='none';$('#app').style.display='block';go('dashboard');sync();toast('Signed in (demo login)')};
-$('#pw').onkeydown=e=>{if(e.key==='Enter')$('#login').click()};
-$('#out').onclick=()=>{$('#app').style.display='none';$('#welcome').style.display='flex';$('#pw').value=''};
+let ME={name:'',email:''},gDone=false;
+function showApp(u){ME=u;AG.splice(1,1,u.name||u.email);$('#signin').style.display='none';$('#welcome').style.display='none';$('#app').style.display='block';$('#who').textContent=u.email;go('dashboard');sync()}
+function signOut(msg){sessionStorage.removeItem('ef_token');if(window.google&&google.accounts)google.accounts.id.disableAutoSelect();$('#app').style.display='none';$('#signin').style.display='none';$('#welcome').style.display='flex';if(msg)toast(msg)}
+async function onGoogle(resp){$('#gerr').textContent='';try{const r=await API.call('POST','/api/auth/google',{credential:resp.credential});sessionStorage.setItem('ef_token',r.token);showApp(r.user)}catch(e){$('#gerr').textContent=e.message==='Failed to fetch'?'Cannot reach the backend. Is it running?':e.message}}
+function initGoogle(){if(gDone)return;const id=window.ESTATEFLOW_GOOGLE_CLIENT_ID;if(!id||id.startsWith('PASTE')){$('#gerr').textContent='Google sign-in is not set up yet: add your client ID in frontend/config.js.';return}
+if(!window.google||!google.accounts){$('#gerr').textContent='Could not load Google sign-in. Check your internet connection and try again.';return}
+google.accounts.id.initialize({client_id:id,callback:onGoogle});google.accounts.id.renderButton($('#gbtn'),{theme:'outline',size:'large',width:300,text:'continue_with'});gDone=true}
+document.querySelectorAll('[data-go="signin"]').forEach(b=>b.addEventListener('click',initGoogle));
+$('#out').onclick=()=>signOut();
+async function restore(){if(!sessionStorage.getItem('ef_token'))return;try{showApp((await API.call('GET','/api/auth/me')).user)}catch(e){sessionStorage.removeItem('ef_token')}}
+window.addEventListener('load',restore);
 $('#mn').onclick=()=>$('#side').classList.toggle('on');
 
 const MODS=[['dashboard','Dashboard'],['leads','Leads'],['properties','Properties'],['appointments','Appointments'],['followups','Follow-ups'],['ai','AI Agent'],['activity','Activity'],['settings','Settings']];
@@ -148,8 +154,8 @@ return `<div class="chat"><div class="card hist"><button class="btn g s" id="nc"
 <div class="msgs" id="msgs">${chat.length?chat.map(m=>`<div class="m ${m.r}">${esc(m.x)}</div>`).join(''):'<div class="empty">Ask something below. The assistant will answer from your real data once connected.</div>'}</div>
 <div class="sug">${sg.map(s=>`<button data-sg="${s}">${s}</button>`).join('')}</div>
 <div style="display:flex;gap:8px"><input id="ci" placeholder="Type a message"><button class="btn" id="cs">Send</button></div></div></div>`},
-activity(){return `<div class="card">${db.activity.map(a=>`<div class="li"><div>${bdg(a.t)} ${esc(a.d)}</div><small>${a.time}</small></div>`).join('')||'<div class="empty">No activity yet.</div>'}</div>`},
-settings(){return `<div class="grid2"><div class="card"><h3>Profile</h3><div class="row" style="margin-top:10px"><label>Name</label><input value="Amina"></div><label>Business name</label><input value="Your Agency Name"><p class="note">These fields are display-only in this phase.</p></div>
+activity(){return `<div class="card">${db.activity.map(a=>`<div class="li"><div>${bdg(a.t)} ${esc(a.d)}</div><small>${a.u?esc(a.u)+' · ':''}${a.time}</small></div>`).join('')||'<div class="empty">No activity yet.</div>'}</div>`},
+settings(){return `<div class="grid2"><div class="card"><h3>Profile</h3><div class="row" style="margin-top:10px"><label>Name</label><input value="${esc(ME.name)}" readonly></div><label>Email</label><input value="${esc(ME.email)}" readonly><p class="note">Taken from your Google account.</p></div>
 <div class="card"><h3>Team</h3>${AG.map(a=>`<div class="li"><span>${a}</span><span class="b">Agent</span></div>`).join('')}<h3 style="margin-top:16px">Integrations</h3>${['FastAPI backend','OpenAI','Supabase'].map(a=>`<div class="li"><span>${a}</span><span class="b">Not connected</span></div>`).join('')}</div></div>`}};
 
 /* modal + forms */

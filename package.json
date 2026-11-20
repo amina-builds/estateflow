@@ -1,0 +1,9 @@
+{
+  "name": "estateflow-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EstateFlow AI: FastAPI backend + web frontend",
+  "scripts": {
+    "start": "python -m uvicorn main:app --reload --app-dir backend"
+  }
+}
