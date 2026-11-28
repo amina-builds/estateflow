@@ -1,8 +1,6 @@
 fastapi
 uvicorn[standard]
-google-auth
 requests
-PyJWT
 python-dotenv
 supabase
 tzdata

@@ -1,41 +1,35 @@
 """EstateFlow AI backend.
 
-FastAPI + Supabase (PostgreSQL). Google sign-in is verified here, every data
-endpoint needs a valid session token, and only emails in ALLOWED_EMAILS can sign in.
-The browser never talks to Supabase: only this backend does, with the secret key.
+FastAPI + Supabase (PostgreSQL). Google sign-in is done by Supabase Auth in the browser.
+This backend checks the Supabase session token on every data endpoint, and only emails
+in ALLOWED_EMAILS can use the app. The browser only uses the public anon key to sign in;
+all data goes through this backend with the secret key.
 """
 import os
 import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-import jwt
 from dotenv import load_dotenv
-from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Body, Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from google.auth.transport import requests as g_requests
-from google.oauth2 import id_token
 from supabase import create_client
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip().strip('"').strip("'").strip()
-JWT_SECRET = os.environ.get("JWT_SECRET", "").strip()
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
 ALLOWED = {e.strip().lower() for e in os.environ.get("ALLOWED_EMAILS", "").split(",") if e.strip()}
 ORIGINS = [o.strip() for o in os.environ.get(
     "CORS_ORIGINS", "http://127.0.0.1:5500,http://localhost:5500").split(",") if o.strip()]
 TZ = ZoneInfo(os.environ.get("TIMEZONE", "Asia/Karachi"))
-SESSION_HOURS = 8
 
-_missing = [k for k, v in (("GOOGLE_CLIENT_ID", GOOGLE_CLIENT_ID), ("JWT_SECRET", JWT_SECRET),
-                           ("ALLOWED_EMAILS", ALLOWED), ("SUPABASE_URL", SUPABASE_URL),
+_missing = [k for k, v in (("ALLOWED_EMAILS", ALLOWED), ("SUPABASE_URL", SUPABASE_URL),
                            ("SUPABASE_SERVICE_KEY", SUPABASE_KEY)) if not v]
-if _missing or len(JWT_SECRET) < 32:
-    raise RuntimeError("Setup needed in backend/.env: " + ", ".join(
-        _missing or ["JWT_SECRET (needs 32 or more characters)"]) + ". See README.md.")
+if _missing:
+    raise RuntimeError("Setup needed in backend/.env (or the Render Environment page): "
+                       + ", ".join(_missing) + ". See README.md.")
 
 sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 try:
@@ -88,53 +82,35 @@ async def security_headers(request, call_next):
 
 
 # ---------- authentication ----------
-_hits = {}
-
-
-def throttle(request: Request):
-    ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    recent = [t for t in _hits.get(ip, []) if now - t < 60]
-    if len(recent) >= 10:
-        raise HTTPException(429, "Too many sign-in attempts. Wait a minute and try again.")
-    recent.append(now)
-    _hits[ip] = recent
+# The browser signs in with Google through Supabase Auth and sends the Supabase access
+# token as "Authorization: Bearer <token>". We ask Supabase who the token belongs to.
+_cache = {}  # token -> (expires_at, user): avoids calling Supabase on every request
 
 
 def current_user(authorization: str = Header(default="")):
     if not authorization.startswith("Bearer "):
         raise HTTPException(401, "Not signed in")
-    try:
-        p = jwt.decode(authorization[7:], JWT_SECRET, algorithms=["HS256"])
-    except jwt.PyJWTError:
-        raise HTTPException(401, "Session expired")
-    if p.get("sub") not in ALLOWED:  # removing an email from the list locks it out immediately
+    token = authorization[7:].strip()
+    now = time.time()
+    hit = _cache.get(token)
+    if hit and hit[0] > now:
+        user = hit[1]
+    else:
+        try:
+            u = sb.auth.get_user(token).user
+        except Exception:
+            raise HTTPException(401, "Session expired")
+        if not u or not u.email:
+            raise HTTPException(401, "Session expired")
+        email = u.email.lower()
+        meta = u.user_metadata or {}
+        user = {"email": email, "name": meta.get("full_name") or meta.get("name") or email}
+        if len(_cache) > 500:
+            _cache.clear()
+        _cache[token] = (now + 60, user)
+    if user["email"] not in ALLOWED:  # removing an email from the list locks it out
         raise HTTPException(401, "Not authorised")
-    return {"email": p["sub"], "name": p.get("name") or p["sub"]}
-
-
-@app.post("/api/auth/google")
-def google_login(request: Request, body: dict = Body(...)):
-    throttle(request)
-    cred = body.get("credential")
-    if not isinstance(cred, str) or not cred:
-        raise HTTPException(422, "credential is required")
-    try:
-        info = id_token.verify_oauth2_token(cred, g_requests.Request(), GOOGLE_CLIENT_ID,
-                                            clock_skew_in_seconds=10)
-    except Exception as e:  # any failure means "not verified"; the reason is logged for debugging
-        print("Google verify failed:", type(e).__name__, e)
-        raise HTTPException(401, "Google sign-in could not be verified")
-    if not info.get("email_verified"):
-        raise HTTPException(401, "Your Google email is not verified")
-    email = str(info.get("email", "")).lower()
-    if email not in ALLOWED:
-        raise HTTPException(403, "This Google account is not authorised to use EstateFlow AI")
-    name = info.get("name") or email
-    now = int(time.time())
-    token = jwt.encode({"sub": email, "name": name, "iat": now, "exp": now + SESSION_HOURS * 3600},
-                       JWT_SECRET, algorithm="HS256")
-    return {"token": token, "user": {"email": email, "name": name}}
+    return user
 
 
 @app.get("/api/auth/me")
@@ -266,12 +242,6 @@ for _name in COLL:
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
-
-
-@app.get("/api/debug/client-id")
-def debug_client_id():
-    # TEMPORARY: remove once sign-in works. The Google client ID is public (it is in config.js), not a secret.
-    return {"client_id": GOOGLE_CLIENT_ID, "length": len(GOOGLE_CLIENT_ID)}
 
 
 @app.get("/api/state")
