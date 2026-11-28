@@ -2,7 +2,7 @@
 
 AI-powered real estate management platform (leads, properties, appointments, follow-ups, AI assistant).
 
-**Status:** Frontend (pink theme) + FastAPI backend + Supabase database + Google sign-in. The AI agent (OpenAI) comes next.
+**Status:** Frontend (pink theme) + FastAPI backend + Supabase database + Google sign-in through Supabase Auth. The AI agent (OpenAI) comes next.
 
 ## Folder structure
 ```
@@ -13,37 +13,44 @@ package.json  Optional `npm start` shortcut for the backend
 .gitignore  Files Git must NOT upload (.env, venv, *.db)
 ```
 
-## Security (what is protected)
-- Google sign-in is verified on the backend (signature, audience, expiry, verified email).
-- Only emails in `ALLOWED_EMAILS` can enter. Anyone else gets "not authorised".
-- Every endpoint except `/api/health` needs a signed session token (expires after 8 hours).
-- Secrets live in `backend/.env`, which Git never uploads. CORS only allows your listed websites.
-- Sign-in attempts are rate-limited. Removing an email from the list locks that person out immediately.
-- Not built yet: separate data per agency, roles (admin / agent), password-free recovery, audit export.
-  When deploying online, use HTTPS only (Render and Vercel provide it) and keep the Supabase secret key only in the host's environment settings.
+## How sign-in works
+1. The user clicks "Continue with Google". The browser goes to Google through Supabase Auth.
+2. Google sends the user back to your website (Vercel) with a Supabase session.
+3. The website sends the Supabase access token to the backend (Render) on every request.
+4. The backend asks Supabase who the token belongs to, and only emails in `ALLOWED_EMAILS` get data.
+
+## Security
+- Every endpoint except `/api/health` needs a valid Supabase session token.
+- Only emails in `ALLOWED_EMAILS` can use the app. Anyone else gets "not authorised".
+- The Supabase secret (service_role) key lives only in the backend environment. The frontend only has the public anon key.
+- CORS only allows your listed websites. Use HTTPS only online (Render and Vercel provide it).
+- Not built yet: separate data per agency, roles (admin / agent), audit export.
 
 ## One-time setup
-0. **Supabase:** supabase.com > New project (save the database password; pick the nearest region).
-   SQL Editor > New query > paste everything from `database/schema.sql` > Run.
-   Table Editor should now show leads, properties, appointments, followups, activity.
-   Project Settings > API: copy the Project URL and the secret key (or legacy service_role key) for step 3.
-1. **Google client ID:** console.cloud.google.com > create a project > APIs & Services > OAuth consent screen
-   (External; add your email under "Test users") > Credentials > Create credentials > OAuth client ID >
-   Web application > Authorized JavaScript origins: add `http://127.0.0.1:5500` and `http://localhost:5500`
-   (and your Vercel link later). Copy the Client ID.
-2. Put the Client ID in `frontend/config.js`.
-3. In `backend`, copy `.env.example` to `.env` and fill in `GOOGLE_CLIENT_ID`, `ALLOWED_EMAILS`, `JWT_SECRET`, `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`
-   (generate it with: `python -c "import secrets;print(secrets.token_hex(32))"`).
-4. Install packages (venv active): `pip install -r backend/requirements.txt`
+0. **Supabase:** supabase.com > New project. SQL Editor > New query > paste everything from `database/schema.sql` > Run.
+   Project Settings > API: copy the Project URL, the anon/publishable key, and the secret (service_role) key.
+1. **Google Cloud Console:** create a project > APIs & Services > OAuth consent screen (External; add your emails under "Test users")
+   > Credentials > Create credentials > OAuth client ID > Web application.
+   Under **Authorized redirect URIs** add `https://YOUR-PROJECT-ID.supabase.co/auth/v1/callback`. Copy the Client ID and Client Secret.
+2. **Supabase > Authentication > Providers > Google:** turn it on and paste the Client ID and Client Secret.
+3. **Supabase > Authentication > URL Configuration:** set Site URL to your Vercel link, and add these under Redirect URLs:
+   `https://YOUR-APP.vercel.app/**` and (for local testing) `http://127.0.0.1:5500/**`.
+4. **frontend/config.js:** set `ESTATEFLOW_API` (your Render link), `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+5. **backend/.env** (locally) or **Render > Environment**: set `ALLOWED_EMAILS`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `CORS_ORIGINS` (your Vercel link, no / at the end).
+6. Install packages (venv active): `pip install -r backend/requirements.txt`
 
-## Run
+## Run locally
 ```
 cd backend
 venv\Scripts\activate
 uvicorn main:app --reload
 ```
 Open http://127.0.0.1:8000/api/health (should show ok). Then right-click `frontend/index.html` > Open with Live Server
-and continue with Google. The backend refuses to start until `.env` is filled in.
+and continue with Google.
+
+## Deploy
+- **Render (backend):** Root directory `backend`, build `pip install -r requirements.txt`, start `uvicorn main:app --host 0.0.0.0 --port $PORT`.
+- **Vercel (frontend):** Root directory `frontend`. Every `git push` redeploys both.
 
 ## Push to GitHub
 ```
@@ -54,5 +61,5 @@ git push
 ```
 
 ## API
-POST /api/auth/google, GET /api/auth/me, GET /api/health, GET /api/state,
+GET /api/auth/me, GET /api/health, GET /api/state,
 GET|POST /api/{leads|properties|appointments|followups}, GET|PATCH /api/{...}/{id}, POST /api/chat
