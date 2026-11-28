@@ -56,7 +56,7 @@ td{padding:10px;border-bottom:1px solid var(--ln);white-space:nowrap}tr:last-chi
 <div class="pills"><span class="pill">Lead CRM</span><span class="pill">Properties</span><span class="pill">Appointments</span><span class="pill">AI Assistant</span></div></div></section>
 
 <section class="auth" id="signin" style="display:none"><div class="card signin"><h2>Sign in</h2><div class="note" style="margin:4px 0 0">Welcome back. Enter your details to continue.</div>
-<div id="gbtn" style="margin:18px 0 6px;display:flex;justify-content:center"></div><div class="err" id="gerr"></div><p class="note">Sign in with your Google account. Only authorised team emails can enter.</p>
+<div id="gbtn" style="margin:18px 0 6px;display:flex;justify-content:center"><button class="btn" id="gsign" type="button">Continue with Google</button></div><div class="err" id="gerr"></div><p class="note">Sign in with your Google account. Only authorised team emails can enter.</p>
 <button class="btn g s" data-go="welcome">Back</button></div></section>
 
 <div id="app"><aside id="side"><div class="brand">EstateFlow AI</div><div id="nav"></div><div style="flex:1"></div><div class="note" id="who" style="padding:0 10px 8px;word-break:break-all"></div><button class="nav" id="out">Sign out</button></aside>
@@ -64,7 +64,7 @@ td{padding:10px;border-bottom:1px solid var(--ln);white-space:nowrap}tr:last-chi
 <div class="ov" id="ov"><div class="card md" id="md"></div></div><div id="toast"></div>
 
 <script src="config.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const $=s=>document.querySelector(s);
 const day=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
@@ -83,26 +83,28 @@ const tone=s=>({Converted:'ok',Completed:'ok',Available:'ok',Confirmed:'ok',Lost
 const bdg=s=>`<span class="b ${tone(s)}">${esc(s)}</span>`;
 const activeLeads=()=>db.leads.filter(l=>!l.arch);
 
+/* SUPABASE AUTH: Google sign-in goes through Supabase. Only the public anon key is used here. */
+const SB_URL=window.SUPABASE_URL,SB_KEY=window.SUPABASE_ANON_KEY;
+const sb=(window.supabase&&SB_URL&&SB_KEY&&!SB_URL.startsWith('PASTE')&&!SB_KEY.startsWith('PASTE'))?window.supabase.createClient(SB_URL,SB_KEY):null;
+async function getToken(){if(!sb)return null;const {data}=await sb.auth.getSession();return data.session?data.session.access_token:null}
 /* API LAYER: the single place for all backend calls (Phase 4). useMock=true keeps the demo data. */
 const API={base:window.ESTATEFLOW_API||'http://127.0.0.1:8000',useMock:false,
 endpoints:{health:'/api/health',state:'/api/state',leads:'/api/leads',properties:'/api/properties',appointments:'/api/appointments',followups:'/api/followups',chat:'/api/chat'},
-async call(m,p,body){if(this.useMock)return null;const h={'Content-Type':'application/json'};const t=sessionStorage.getItem('ef_token');if(t)h.Authorization='Bearer '+t;const r=await fetch(this.base+p,{method:m,headers:h,body:body?JSON.stringify(body):undefined});if(r.status===401&&t){signOut('Session expired. Please sign in again.');throw new Error('Not signed in')}if(!r.ok){let d='';try{d=(await r.json()).detail}catch(e){}throw new Error(typeof d==='string'&&d?d:'API '+r.status)}return r.json()},
+async call(m,p,body){if(this.useMock)return null;const h={'Content-Type':'application/json'};const t=await getToken();if(t)h.Authorization='Bearer '+t;const r=await fetch(this.base+p,{method:m,headers:h,body:body?JSON.stringify(body):undefined});if(r.status===401&&t&&p!=='/api/auth/me'){signOut('Session expired. Please sign in again.');throw new Error('Not signed in')}if(!r.ok){let d='';try{d=(await r.json()).detail}catch(e){}throw new Error(typeof d==='string'&&d?d:'API '+r.status)}return r.json()},
 list(k){return this.call('GET',this.endpoints[k])},create(k,b){return this.call('POST',this.endpoints[k],b)},update(k,id,b){return this.call('PATCH',this.endpoints[k]+'/'+id,b)},chat(msg){return this.call('POST',this.endpoints.chat,{message:msg})}};
 let online=true;
 async function sync(){try{Object.assign(db,await API.list('state'));online=true}catch(e){online=false}render()}
 async function commit(p){try{await p}catch(e){toast('Backend error: '+e.message);return false}await sync();return true}
 /* screens */
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{$('#welcome').style.display=b.dataset.go==='welcome'?'flex':'none';$('#signin').style.display=b.dataset.go==='signin'?'flex':'none'});
-let ME={name:'',email:''},gDone=false;
+let ME={name:'',email:''};
 function showApp(u){ME=u;AG.splice(1,1,u.name||u.email);$('#signin').style.display='none';$('#welcome').style.display='none';$('#app').style.display='block';$('#who').textContent=u.email;go('dashboard');sync()}
-function signOut(msg){sessionStorage.removeItem('ef_token');if(window.google&&google.accounts)google.accounts.id.disableAutoSelect();$('#app').style.display='none';$('#signin').style.display='none';$('#welcome').style.display='flex';if(msg)toast(msg)}
-async function onGoogle(resp){$('#gerr').textContent='';try{const r=await API.call('POST','/api/auth/google',{credential:resp.credential});sessionStorage.setItem('ef_token',r.token);showApp(r.user)}catch(e){$('#gerr').textContent=e.message==='Failed to fetch'?'Cannot reach the backend. Is it running?':e.message}}
-function initGoogle(){if(gDone)return;const id=window.ESTATEFLOW_GOOGLE_CLIENT_ID;if(!id||id.startsWith('PASTE')){$('#gerr').textContent='Google sign-in is not set up yet: add your client ID in frontend/config.js.';return}
-if(!window.google||!google.accounts){$('#gerr').textContent='Could not load Google sign-in. Check your internet connection and try again.';return}
-google.accounts.id.initialize({client_id:id,callback:onGoogle});google.accounts.id.renderButton($('#gbtn'),{theme:'outline',size:'large',width:300,text:'continue_with'});gDone=true}
-document.querySelectorAll('[data-go="signin"]').forEach(b=>b.addEventListener('click',initGoogle));
+function signOut(msg){if(sb)sb.auth.signOut();$('#app').style.display='none';$('#signin').style.display='none';$('#welcome').style.display='flex';if(msg)toast(msg)}
+async function googleLogin(){$('#gerr').textContent='';if(!sb){$('#gerr').textContent='Sign-in is not set up yet: add your Supabase URL and anon key in frontend/config.js.';return}
+const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin+window.location.pathname}});if(error)$('#gerr').textContent=error.message}
+$('#gsign').addEventListener('click',googleLogin);
 $('#out').onclick=()=>signOut();
-async function restore(){if(!sessionStorage.getItem('ef_token'))return;try{showApp((await API.call('GET','/api/auth/me')).user)}catch(e){sessionStorage.removeItem('ef_token')}}
+async function restore(){if(!sb)return;const t=await getToken();if(!t)return;try{showApp((await API.call('GET','/api/auth/me')).user)}catch(e){const m=e.message==='Not authorised'?'This Google account is not authorised to use EstateFlow AI.':(e.message==='Failed to fetch'?'Cannot reach the backend. Check ESTATEFLOW_API in frontend/config.js.':'Could not sign in: '+e.message);sb.auth.signOut();$('#welcome').style.display='none';$('#signin').style.display='flex';$('#gerr').textContent=m}}
 window.addEventListener('load',restore);
 $('#mn').onclick=()=>$('#side').classList.toggle('on');
 
